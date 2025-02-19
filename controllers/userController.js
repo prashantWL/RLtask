@@ -1,5 +1,6 @@
 const User = require('../models/userModel');
 const Programs = require('../models/programsModel');
+const Progress = require('../models/progressModel');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -12,6 +13,7 @@ exports.createUser = async (req, res) => {
       email: req.body.email,
       name: req.body.name,
       password: hashedPassword,
+      type: req.body.type,
       userPrograms: req.body.userPrograms,
     });
 
@@ -66,7 +68,7 @@ exports.loginUser = async (req, res) => {
 exports.getUserDetails = async (req, res) => {
   try {
     // The authenticate middleware attaches the user to the request object
-    const user = await User.findOne({ email: req.user.email }).populate('userPrograms.programName');
+    const user = await User.findOne({ email: req.params.email }).populate('userPrograms.programName');
 
     if (!user) {
       return res.status(404).json({
@@ -117,6 +119,22 @@ exports.assignProgram = async (req, res) => {
     });
 
     const updatedUser = await user.save();
+
+    // Create a new Progress document with initialized dailyProgress
+    const dailyProgress = [];
+    for (let i = 1; i <= program.programLength * 7; i++) {
+      dailyProgress.push({
+        day: i,
+        activities: [],
+      });
+    }
+
+    const newProgress = new Progress({
+      userEmail: req.params.email,
+      programName: req.body.programName,
+      dailyProgress: dailyProgress,
+    });
+    await newProgress.save();
 
     res.json(updatedUser);
   }
